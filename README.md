@@ -48,3 +48,6 @@ La idea es realizar un sistema de gestión para una escuela de natación, que pe
 ## Esquema de la base de datos DEER
 
 ![](https://github.com/Zedreef/CentroAcuatico/blob/master/Imagenes/DEER.png)
+
+
+prueba xd
