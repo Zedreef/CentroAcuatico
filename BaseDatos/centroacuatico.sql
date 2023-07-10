@@ -287,9 +287,68 @@ CREATE TABLE IF NOT EXISTS `centroacuatico`.`alumno_has_horario` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
--- -----------------------------------------------------------------------------
+-- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Vistas
+-- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
+# Crear la vista que muestra los horarios y el número de alumnos que han pagado la mensualidad del mes y año actual
+-- ---------------------------------------------------------------------
+CREATE VIEW horarios_con_alumnos_pagados AS
+SELECT d.idDia as idDia, d.diaNombre AS Dia, hi.hora AS hora_inicio, hf.hora AS hora_fin, COUNT(*) AS numero_alumnos
+FROM centroacuatico.horario ho
+JOIN centroacuatico.diaHora dh ON ho.diaHora_idDiaHora = dh.idDiaHora
+JOIN centroacuatico.dia d ON dh.dia_idDia = d.idDia
+JOIN centroacuatico.hora hi ON dh.diaHora_idHoraInicio = hi.idHora
+JOIN centroacuatico.hora hf ON dh.diaHora_idHoraFin = hf.idHora
+JOIN centroacuatico.alumno_has_horario ahh ON ho.idHorario = ahh.horario_idHorario
+JOIN centroacuatico.pago p ON ahh.alumno_idalumno = p.alumno_idalumno
+WHERE YEAR(p.mensualidadFecha) = YEAR(CURDATE()) AND MONTH(p.mensualidadFecha) = MONTH(CURDATE())
+GROUP BY ho.idHorario;
+
+-- Llama a la vista horario con alumnos pagados
+SELECT * FROM horarios_con_alumnos_pagados;
+-- -----------------------------------------------------------------------------------------------------------
+# Generar una vista para visualizar el nombre de cada alumno junto con las fechas de sus pagos
+-- -----------------------------------------------------------------------------------------------------------
+CREATE VIEW vista_pagos_alumnos AS
+SELECT a.idalumno, a.alumnoNombre, alumnoApellidop, a.alumnoApellidom, p.mensualidadFecha
+FROM alumno a
+JOIN pago p ON a.idalumno = p.alumno_idalumno;
+
+-- Llama a la vista horario con alumnos pagados
+SELECT * FROM vista_pagos_alumnos;
+-- -----------------------------------------------------------------------------------------------------------
+# Crear la vista para visualizar el nombre y las fechas de pago de un alumno específico
+-- -----------------------------------------------------------------------------------------------------------
+CREATE VIEW vista_pagos_alumno_especifico AS
+SELECT a.idalumno, a.alumnoNombre, a.alumnoApellidop, a.alumnoApellidom, p.mensualidadFecha
+FROM alumno a
+JOIN pago p ON a.idalumno = p.alumno_idalumno
+WHERE a.idalumno = <ID_DEL_ALUMNO>; -- Reemplaza <ID_DEL_ALUMNO> con el ID del alumno específico que deseas buscar
+
+-- Llama a la vista para mostrar los pagos del alumno específico
+SELECT * FROM vista_pagos_alumno_especifico;
+
+
+-- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Triggers
+-- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- -----------------------------------------------------------------------------------------------------------
+# Generar un trigger antes de insertar en la tabla "pago" para que la fecha siempre sea la fecha actual
+-- -----------------------------------------------------------------------------------------------------------
+DELIMITER //
+CREATE TRIGGER before_insert_pago
+BEFORE INSERT ON pago
+FOR EACH ROW
+BEGIN
+    SET NEW.mensualidadFecha = CURDATE();
+END //
+DELIMITER ;vista_pagos_alumnos
+
+-- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Llenado de las tablas con restriccion de datos
--- -----------------------------------------------------------------------------
+-- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- -----------------------------------------------------
 # Llenado de la tabla tipoHorario
