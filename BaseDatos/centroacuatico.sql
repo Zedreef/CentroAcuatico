@@ -287,6 +287,19 @@ CREATE TABLE IF NOT EXISTS `centroacuatico`.`alumno_has_horario` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
+-- -------------------------------------------------------------------------------------------------
+# Generar una tabla llamada PAGO_LOG tenieno los mismos atributos de la tabla PAGO
+# y agregar los dos campos extra, usuario VARCHAR(70) y Tipo(date)
+-- -------------------------------------------------------------------------------------------------
+-- Crear una copia de la tabla original, la sentencia " WHERE 1=0" 
+-- se utiliza para obtener la estructura de una tabla existente sin copiar los datos.
+CREATE TABLE pago_log AS SELECT * FROM pago WHERE 1=0 ;
+
+-- Agregar campos a la nueva tabla
+ALTER TABLE pago_log
+ADD COLUMN usuario VARCHAR(70),
+ADD COLUMN fecha DATE;
+
 -- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Vistas
 -- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -325,7 +338,7 @@ CREATE VIEW vista_pagos_alumno_especifico AS
 SELECT a.idalumno, a.alumnoNombre, a.alumnoApellidop, a.alumnoApellidom, p.mensualidadFecha
 FROM alumno a
 JOIN pago p ON a.idalumno = p.alumno_idalumno
-WHERE a.idalumno = <ID_DEL_ALUMNO>; -- Reemplaza <ID_DEL_ALUMNO> con el ID del alumno específico que deseas buscar
+WHERE a.idalumno = 1; -- Reemplaza <ID_DEL_ALUMNO> con el ID del alumno específico que deseas buscar
 
 -- Llama a la vista para mostrar los pagos del alumno específico
 SELECT * FROM vista_pagos_alumno_especifico;
@@ -344,6 +357,148 @@ BEGIN
     SET NEW.mensualidadFecha = CURDATE();
 END //
 DELIMITER ;vista_pagos_alumnos
+
+-- -------------------------------------------------------------------------------------------------
+# GENERE UN TRIGGER EN LA TABLA PAGO PARA EVITAR QUE SE ACTUALICEN REGISTROS.
+-- -------------------------------------------------------------------------------------------------
+DELIMITER $$
+CREATE TRIGGER evitar_modificacion_pago
+BEFORE UPDATE ON pago
+FOR EACH ROW
+BEGIN
+  -- Guardar el intento de modificación en la tabla "pago_log"
+  INSERT INTO pago_log VALUES (OLD.idMensualidad, OLD.mensualidadFecha, OLD.tipoPago_idTipoPago, OLD.alumno_idalumno, OLD.numRecibo, current_user(), current_date());
+  
+  -- Evitar la modificación del registro
+  SET NEW.idMensualidad = OLD.idMensualidad;
+  SET NEW.mensualidadFecha = OLD.mensualidadFecha;
+  SET NEW.tipoPago_idTipoPago = OLD.tipoPago_idTipoPago;
+  SET NEW.alumno_idalumno = OLD.alumno_idalumno;
+  SET NEW.numRecibo = OLD.numRecibo;
+END $$
+DELIMITER ;
+
+-- Se muestra la tabla
+SELECT * FROM centroacuatico.pago_log;
+
+-- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Funciones
+-- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- -------------------------------------------------------------------------------------------------
+# Función que devuelve el mes con más pagos realizados
+-- -------------------------------------------------------------------------------------------------
+DELIMITER $$
+CREATE FUNCTION mesConMasPagos() RETURNS VARCHAR(20) DETERMINISTIC
+BEGIN
+	DECLARE mesNombre VARCHAR(20);
+	DECLARE numeroPag INT;
+	DECLARE maxM VARCHAR(20);
+	DECLARE maxNP INT;
+	DECLARE i INT;
+	
+	SET maxM = '';
+	SET maxNP = 0;
+	SET i = 1;
+
+	loop1: LOOP
+    -- Comprobamos si hemos alcanzado el mes 12
+		IF i > 12 THEN
+			LEAVE loop1;
+		END IF;
+		-- Obtenemos el nombre del mes y el número de pagos para el mes actual
+		SELECT MONTHNAME(mensualidadFecha) AS mes, COUNT(*) AS numPagos INTO mesNombre, numeroPag FROM pago WHERE MONTH(mensualidadFecha) = i GROUP BY mes;
+		-- Comparamos el número de pagos con el máximo actual
+		IF numeroPag > maxNP THEN
+			SET maxM = mesNombre; -- Actualizamos el nombre del mes con más pagos
+			SET maxNP = numeroPag; -- Actualizamos la cantidad máxima de pagos
+		END IF;
+		SET i = i + 1;
+	END LOOP;
+	-- Devolvemos el nombre del mes con más pagos
+	RETURN maxM;
+END $$
+DELIMITER ;
+
+-- checamos el funcionamiento de la funcion
+select mesConMasPagos();
+
+-- -------------------------------------------------------------------------------------------------
+# Función que devuelve el tipoAlumno más común en la BD
+-- -------------------------------------------------------------------------------------------------
+delimiter $$
+create function tipoAlumnoMasComun() returns VARCHAR(255) deterministic
+begin
+	declare tA VARCHAR(255);
+	declare numeroA int;
+	-- Obtener el tipo de alumno más común y el número de alumnos por tipo
+	select tipoAlumno_idtipoAlumno as tipoAlumno, count(*) as numAlumnosPorTipo 
+    into tA, numeroA from alumno 
+    group by tipoAlumno_idtipoAlumno order by numAlumnosPorTipo 
+    desc limit 1;
+
+    -- Obtener el nombre del tipo de alumno utilizando el tipoAlumnoID
+    SELECT tipoAlumnoNombre INTO tA
+    FROM tipoAlumno
+    WHERE idtipoAlumno = tA;
+
+	return tA;
+end $$
+
+delimiter ;
+
+-- Ejecutar la función y obtener el resultado
+select tipoAlumnoMasComun();
+
+-- -------------------------------------------------------------------------------------------------
+-- Función que devuelve el horario con más alumnos en él
+-- -------------------------------------------------------------------------------------------------
+-- Crea el procedimiento almacenado
+DELIMITER //
+CREATE PROCEDURE obtenerHorarioConMasAlumnos()
+BEGIN
+    DECLARE idHorario INT;
+    DECLARE dia_semana VARCHAR(45);
+    DECLARE hora_inicio VARCHAR(45);
+    DECLARE hora_fin VARCHAR(45);
+    DECLARE cantidad INT;
+    
+    -- Obtener el horario con más alumnos
+    SELECT ho.idHorario, d.diaNombre, hi.hora, hf.hora, COUNT(*) AS numAlumnos
+    INTO idHorario, dia_semana, hora_inicio, hora_fin, cantidad
+    FROM alumno_has_horario ah
+    JOIN horario ho ON ah.horario_idHorario = ho.idHorario
+    JOIN diaHora dh ON ho.diaHora_idDiaHora = dh.idDiaHora
+    JOIN dia d ON dh.dia_idDia = d.idDia
+    JOIN hora hi ON dh.diaHora_idHoraInicio = hi.idHora
+    JOIN hora hf ON dh.diaHora_idHoraFin = hf.idHora
+    GROUP BY ho.idHorario
+    ORDER BY numAlumnos DESC
+    LIMIT 1;
+    
+    -- Crear una tabla temporal para almacenar el resultado
+    CREATE TEMPORARY TABLE IF NOT EXISTS temp_horario_con_mas_alumnos (
+        dia VARCHAR(45),
+        hora_inicio VARCHAR(45),
+        hora_fin VARCHAR(45),
+        cantidad_alumnos INT
+    );
+    
+    -- Insertar el resultado en la tabla temporal
+    INSERT INTO temp_horario_con_mas_alumnos (dia, hora_inicio, hora_fin, cantidad_alumnos)
+    VALUES (dia_semana, hora_inicio, hora_fin, cantidad);
+    
+    -- Obtener el resultado de la tabla temporal
+    SELECT * FROM temp_horario_con_mas_alumnos;
+    
+    -- Eliminar la tabla temporal
+    DROP TEMPORARY TABLE IF EXISTS temp_horario_con_mas_alumnos;
+END//
+DELIMITER ;
+
+
+-- Ejecutar la función y obtener el resultado
+CALL obtenerHorarioConMasAlumnos();
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Llenado de las tablas con restriccion de datos
