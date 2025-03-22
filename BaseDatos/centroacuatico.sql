@@ -723,7 +723,7 @@ values
 -- -----------------------------------------------------
 -- Inserciones en la tabla horario
 -- -----------------------------------------------------
-insert into horario
+/* insert into horario
 (
 	tipoHorario_idtipoHorario,
     diaHora_idDiaHora
@@ -829,7 +829,7 @@ values
 (2,98),
 (2,99),
 (2,100),
-(2,101);
+(2,101); */
 
 /* Solamente es para ver que las inserciones se hicieron bien en la tabla diaHora
 select d.diaNombre,hi.hora, hf.hora, th.tipoHorarioNombre from horario ho
@@ -10636,3 +10636,279 @@ VALUES
 ('57930', 'Manantiales', 'Nezahualcóyotl', 'Ciudad Nezahualcóyotl'),
 ('57940', 'Loma Bonita', 'Nezahualcóyotl', 'Ciudad Nezahualcóyotl'),
 ('57950', 'Ampliación Las Águilas', 'Nezahualcóyotl', 'Ciudad Nezahualcóyotl');
+
+
+-- -----------------------------------------------------
+-- CAMBIOS PARA BD Distribuida
+-- -----------------------------------------------------
+
+-- -----------------------------------------------------
+-- Modificación de la Tabla tipoAlumno:
+--
+-- Se agrega una nueva entrada para la membresía "Black"
+-- -----------------------------------------------------
+INSERT INTO `centroacuatico`.`tipoAlumno` (`idtipoAlumno`, `tipoAlumnoNombre`, `tipoAlumnoDescripcion`)
+VALUES (NULL, 'Black', 'Membresía que permite asistir a cualquier sucursal');
+
+-- -----------------------------------------------------
+-- Tabla Sucursal:
+--
+-- Para manejar múltiples sucursales, se agrega una tabla 'sucursal' que 
+-- almacene la información de cada una.
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `centroacuatico`.`sucursal` (
+  `idSucursal` INT NOT NULL AUTO_INCREMENT,
+  `sucursalNombre` VARCHAR(100) NOT NULL,
+  `sucursalDireccion` VARCHAR(255) NOT NULL,
+  `sucursalTelefono` VARCHAR(20) NULL,
+  PRIMARY KEY (`idSucursal`)
+) ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Modificación de la Tabla alumno:
+--
+-- Agrega una columna sucursal_idSucursal a la tabla 
+-- alumno y establece una clave foránea que referencia 
+-- a la tabla sucursal.
+-- -----------------------------------------------------
+ALTER TABLE `centroacuatico`.`alumno`
+ADD COLUMN `sucursal_idSucursal` INT NULL,
+ADD FOREIGN KEY (`sucursal_idSucursal`) REFERENCES `centroacuatico`.`sucursal` (`idSucursal`);
+
+-- -----------------------------------------------------
+-- Modificación de la Tabla pago:
+--
+-- Para registrar en qué sucursal se realizó el pago, 
+-- agrega una columna sucursal_idSucursal a la tabla pago.
+-- -----------------------------------------------------
+ALTER TABLE `centroacuatico`.`pago`
+ADD COLUMN `sucursal_idSucursal` INT NULL,
+ADD FOREIGN KEY (`sucursal_idSucursal`) REFERENCES `centroacuatico`.`sucursal` (`idSucursal`);
+
+-- -----------------------------------------------------
+-- Modificación de la Tabla horario:
+--
+-- Para registrar en qué sucursal se imparte el horario, 
+-- agrega una columna sucursal_idSucursal a la tabla horario.
+-- -----------------------------------------------------
+ALTER TABLE `centroacuatico`.`horario`
+ADD COLUMN `sucursal_idSucursal` INT NULL,
+ADD FOREIGN KEY (`sucursal_idSucursal`) REFERENCES `centroacuatico`.`sucursal` (`idSucursal`);
+
+-- -----------------------------------------------------
+-- Columnas de Timestamp:
+--
+-- Ayuda a mantener un registro de cuándo se crearon y actualizaron los registros, 
+-- lo cual es útil para la sincronización y replicación de datos.
+-- -----------------------------------------------------
+ALTER TABLE `centroacuatico`.`alumno`
+ADD COLUMN `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+ALTER TABLE `centroacuatico`.`pago`
+ADD COLUMN `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+ALTER TABLE `centroacuatico`.`horario`
+ADD COLUMN `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+ALTER TABLE `centroacuatico`.`sucursal`
+ADD COLUMN `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+-- -----------------------------------------------------
+-- llenado de datos de la tabla sucursal:
+-- -----------------------------------------------------
+INSERT INTO `centroacuatico`.`sucursal` (`idSucursal`, `sucursalNombre`, `sucursalDireccion`, `sucursalTelefono`)
+VALUES 
+(NULL, 'Sucursal Centro', 'Calle Principal 123, Centro', '555-1234'),
+(NULL, 'Sucursal Norte', 'Avenida Norte 456, Norte', '555-5678'),
+(NULL, 'Sucursal Sur', 'Boulevard Sur 789, Sur', '555-9012'),
+(NULL, 'Sucursal Este', 'Calle Este 101, Este', '555-3456'),
+(NULL, 'Sucursal Oeste', 'Avenida Oeste 202, Oeste', '555-7890'),
+(NULL, 'Sucursal Noroeste', 'Boulevard Noroeste 303, Noroeste', '555-2345'),
+(NULL, 'Sucursal Suroeste', 'Calle Suroeste 404, Suroeste', '555-6789'),
+(NULL, 'Sucursal Noreste', 'Avenida Noreste 505, Noreste', '555-0123'),
+(NULL, 'Sucursal Sureste', 'Boulevard Sureste 606, Sureste', '555-4567'),
+(NULL, 'Sucursal Central', 'Calle Central 707, Central', '555-8901');
+
+
+-- -----------------------------------------------------
+-- llenado de datos de la tabla direccion:
+-- -----------------------------------------------------
+INSERT INTO `centroacuatico`.`direccion` (`idDireccion`, `direccionCalle`, `direccionNumero`, `codigoPostal_idCodigoPostal`)
+VALUES 
+(NULL, 'Calle Falsa', 123, 1),
+(NULL, 'Avenida Siempre Viva', 742, 2),
+(NULL, 'Boulevard de los Sueños Rotos', 456, 3),
+(NULL, 'Calle de la Amargura', 789, 4),
+(NULL, 'Avenida de la Felicidad', 101, 5),
+(NULL, 'Boulevard de los Recuerdos', 202, 6),
+(NULL, 'Calle de la Esperanza', 303, 7),
+(NULL, 'Avenida de los Sueños', 404, 8),
+(NULL, 'Boulevard de la Paz', 505, 9),
+(NULL, 'Calle de la Alegría', 606, 10);
+
+-- -----------------------------------------------------
+-- llenado de datos de la tabla ContactoE:
+-- -----------------------------------------------------
+INSERT INTO `centroacuatico`.`contactoE` (`idcontactoE`, `contactoENombre`, `contactoETelefono`, `parentesco_idParentesco`, `direccion_idDireccion`)
+VALUES 
+(NULL, 'Pedro Pérez', '555-4444', 1, 1),
+(NULL, 'Ana López', '555-5555', 2, 2),
+(NULL, 'Luis Hernández', '555-6666', 3, 3),
+(NULL, 'Marta García', '555-7777', 4, 4),
+(NULL, 'Jorge Martínez', '555-8888', 5, 5),
+(NULL, 'Laura Rodríguez', '555-9999', 6, 6),
+(NULL, 'Carlos Gómez', '555-0000', 7, 7),
+(NULL, 'Sofía Díaz', '555-1111', 8, 8),
+(NULL, 'Miguel Fernández', '555-2222', 9, 9),
+(NULL, 'Lucía Ruiz', '555-3333', 10, 10);
+
+-- -----------------------------------------------------
+-- llenado de datos de la tabla alumno:
+-- -----------------------------------------------------
+INSERT INTO `centroacuatico`.`alumno` (`idalumno`, `alumnoNombre`, `alumnoApellidop`, `alumnoApellidom`, `alumnoTelefono`, `alumnoCorreo`, `alumnoFechaNac`, `contactoE_idcontactoE`, `alumnoFechaInscripcion`, `tipoAlumno_idtipoAlumno`, `nivelAlumno_idnivelAlumno`, `direccion_idDireccion`, `sucursal_idSucursal`, `created_at`, `updated_at`)
+VALUES 
+(NULL, 'Juan', 'Pérez', 'Gómez', '555-1111', 'juan@example.com', '2005-01-01', 1, '2025-01-01', 1, 1, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 'María', 'López', 'Martínez', '555-2222', 'maria@example.com', '2006-02-02', 2, '2025-02-01', 2, 2, 2, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 'Carlos', 'Hernández', 'Rodríguez', '555-3333', 'carlos@example.com', '2007-03-03', 3, '2025-03-01', 3, 3, 3, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 'Ana', 'Martínez', 'García', '555-4444', 'ana@example.com', '2008-04-04', 4, '2025-04-01', 4, 4, 4, 4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 'Luis', 'Rodríguez', 'Sánchez', '555-5555', 'luis@example.com', '2009-05-05', 5, '2025-05-01', 5, 5, 5, 5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 'Sofía', 'Díaz', 'Fernández', '555-6666', 'sofia@example.com', '2010-06-06', 6, '2025-06-01', 6, 4, 6, 6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 'Pedro', 'Gómez', 'Ruiz', '555-7777', 'pedro@example.com', '2011-07-07', 7, '2025-07-01', 7, 3, 7, 7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 'Laura', 'Fernández', 'Díaz', '555-8888', 'laura@example.com', '2012-08-08', 8, '2025-08-01', 8, 4, 8, 8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 'Jorge', 'Ruiz', 'Gómez', '555-9999', 'jorge@example.com', '2013-09-09', 9, '2025-09-01', 9, 5, 9, 9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 'Marta', 'García', 'López', '555-0000', 'marta@example.com', '2014-10-10', 10, '2025-10-01', 10, 1, 10, 10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+
+-- -----------------------------------------------------
+-- llenado de datos de la tabla pago:
+-- -----------------------------------------------------
+INSERT INTO `centroacuatico`.`pago` (`idmensualidad`, `mensualidadFecha`, `tipoPago_idtipoPago`, `alumno_idalumno`, `numRecibo`, `sucursal_idSucursal`, `created_at`, `updated_at`)
+VALUES 
+(NULL, '2025-03-01', 1, 1, 'REC-001', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '2025-03-02', 1, 2, 'REC-002', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '2025-03-03', 1, 3, 'REC-003', 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '2025-03-04', 1, 4, 'REC-004', 4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '2025-03-05', 1, 5, 'REC-005', 5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '2025-03-06', 1, 6, 'REC-006', 6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '2025-03-07', 1, 7, 'REC-007', 7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '2025-03-08', 1, 8, 'REC-008', 8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '2025-03-09', 1, 9, 'REC-009', 9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '2025-03-10', 1, 10, 'REC-010', 10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- -----------------------------------------------------
+-- llenado de datos de la tabla Horario:
+-- -----------------------------------------------------
+INSERT INTO `centroacuatico`.`horario`
+(
+    `tipoHorario_idtipoHorario`,
+    `diaHora_idDiaHora`,
+    `sucursal_idSucursal`,
+    `created_at`,
+    `updated_at`
+)
+VALUES
+(1, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 2, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 3, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 4, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 5, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 6, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 7, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 8, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 9, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 10, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 11, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 12, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 13, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 14, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 15, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 16, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 17, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 18, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 19, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 20, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 43, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 44, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 45, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 46, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 47, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 52, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 53, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 54, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 55, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 48, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 49, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 50, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 51, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 56, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 57, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 21, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 22, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 23, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 24, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 25, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 26, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 27, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 28, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 29, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 30, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 31, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 32, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 33, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 34, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 35, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 36, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 37, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 38, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 39, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 40, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 41, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 42, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 58, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 59, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 60, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 61, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 62, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 63, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 64, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 65, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 66, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 67, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 68, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 69, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 70, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 71, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 72, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 73, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 74, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 75, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 76, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 77, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 78, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 79, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 80, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 81, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 82, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 83, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 84, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 85, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 86, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 87, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 88, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 89, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 90, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 91, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 92, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 93, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 94, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 95, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 96, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 97, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 98, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 99, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 100, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 101, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
