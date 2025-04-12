@@ -774,26 +774,3 @@ VALUES
 (2, 99, 4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (2, 100, 5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (2, 101, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
-
--- -----------------------------------------------------
--- Fragmentación Horizontal por Sucursal
--- -----------------------------------------------------
-CREATE TABLE alumno_FA1 AS
-SELECT * FROM alumno
-WHERE sucursal_idSucursal = 1;
-
-CREATE TABLE alumno_FA2 AS
-SELECT * FROM alumno
-WHERE sucursal_idSucursal = 2;
-
-CREATE TABLE alumno_FA3 AS
-SELECT * FROM alumno
-WHERE sucursal_idSucursal = 3;
-
-CREATE TABLE alumno_FA4 AS
-SELECT * FROM alumno
-WHERE sucursal_idSucursal = 4;
-
-CREATE TABLE alumno_FA5 AS
-SELECT * FROM alumno
-WHERE sucursal_idSucursal = 5;
